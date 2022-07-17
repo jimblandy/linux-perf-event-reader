@@ -1,5 +1,5 @@
-use crate::constants::*;
 use bitflags::bitflags;
+use perf_event_open_sys::bindings::*;
 
 bitflags! {
     pub struct SampleFormat: u64 {
@@ -32,122 +32,122 @@ bitflags! {
 
     pub struct BranchSampleFormat: u64 {
         /// user branches
-        const USER = PERF_SAMPLE_BRANCH_USER;
+        const USER = PERF_SAMPLE_BRANCH_USER as u64;
         /// kernel branches
-        const KERNEL = PERF_SAMPLE_BRANCH_KERNEL;
+        const KERNEL = PERF_SAMPLE_BRANCH_KERNEL as u64;
         /// hypervisor branches
-        const HV = PERF_SAMPLE_BRANCH_HV;
+        const HV = PERF_SAMPLE_BRANCH_HV as u64;
         /// any branch types
-        const ANY = PERF_SAMPLE_BRANCH_ANY;
+        const ANY = PERF_SAMPLE_BRANCH_ANY as u64;
         /// any call branch
-        const ANY_CALL = PERF_SAMPLE_BRANCH_ANY_CALL;
+        const ANY_CALL = PERF_SAMPLE_BRANCH_ANY_CALL as u64;
         /// any return branch
-        const ANY_RETURN = PERF_SAMPLE_BRANCH_ANY_RETURN;
+        const ANY_RETURN = PERF_SAMPLE_BRANCH_ANY_RETURN as u64;
         /// indirect calls
-        const IND_CALL = PERF_SAMPLE_BRANCH_IND_CALL;
+        const IND_CALL = PERF_SAMPLE_BRANCH_IND_CALL as u64;
         /// transaction aborts
-        const ABORT_TX = PERF_SAMPLE_BRANCH_ABORT_TX;
+        const ABORT_TX = PERF_SAMPLE_BRANCH_ABORT_TX as u64;
         /// in transaction
-        const IN_TX = PERF_SAMPLE_BRANCH_IN_TX;
+        const IN_TX = PERF_SAMPLE_BRANCH_IN_TX as u64;
         /// not in transaction
-        const NO_TX = PERF_SAMPLE_BRANCH_NO_TX;
+        const NO_TX = PERF_SAMPLE_BRANCH_NO_TX as u64;
         /// conditional branches
-        const COND = PERF_SAMPLE_BRANCH_COND;
+        const COND = PERF_SAMPLE_BRANCH_COND as u64;
         /// call/ret stack
-        const CALL_STACK = PERF_SAMPLE_BRANCH_CALL_STACK;
+        const CALL_STACK = PERF_SAMPLE_BRANCH_CALL_STACK as u64;
         /// indirect jumps
-        const IND_JUMP = PERF_SAMPLE_BRANCH_IND_JUMP;
+        const IND_JUMP = PERF_SAMPLE_BRANCH_IND_JUMP as u64;
         /// direct call
-        const CALL = PERF_SAMPLE_BRANCH_CALL;
+        const CALL = PERF_SAMPLE_BRANCH_CALL as u64;
         /// no flags
-        const NO_FLAGS = PERF_SAMPLE_BRANCH_NO_FLAGS;
+        const NO_FLAGS = PERF_SAMPLE_BRANCH_NO_FLAGS as u64;
         /// no cycles
-        const NO_CYCLES = PERF_SAMPLE_BRANCH_NO_CYCLES;
+        const NO_CYCLES = PERF_SAMPLE_BRANCH_NO_CYCLES as u64;
         /// save branch type
-        const TYPE_SAVE = PERF_SAMPLE_BRANCH_TYPE_SAVE;
+        const TYPE_SAVE = PERF_SAMPLE_BRANCH_TYPE_SAVE as u64;
         /// save low level index of raw branch records
-        const HW_INDEX = PERF_SAMPLE_BRANCH_HW_INDEX;
+        const HW_INDEX = PERF_SAMPLE_BRANCH_HW_INDEX as u64;
     }
 
     pub struct AttrFlags: u64 {
         /// off by default
-        const DISABLED = ATTR_FLAG_BIT_DISABLED;
+        const DISABLED = 0;
         /// children inherit it
-        const INHERIT = ATTR_FLAG_BIT_INHERIT;
+        const INHERIT = 0;
         /// must always be on PMU
-        const PINNED = ATTR_FLAG_BIT_PINNED;
+        const PINNED = 0;
         /// only group on PMU
-        const EXCLUSIVE = ATTR_FLAG_BIT_EXCLUSIVE;
+        const EXCLUSIVE = 0;
         /// don't count user
-        const EXCLUDE_USER = ATTR_FLAG_BIT_EXCLUDE_USER;
+        const EXCLUDE_USER = 0;
         /// don't count kernel
-        const EXCLUDE_KERNEL = ATTR_FLAG_BIT_EXCLUDE_KERNEL;
+        const EXCLUDE_KERNEL = 0;
         /// don't count hypervisor
-        const EXCLUDE_HV = ATTR_FLAG_BIT_EXCLUDE_HV;
+        const EXCLUDE_HV = 0;
         /// don't count when idle
-        const EXCLUDE_IDLE = ATTR_FLAG_BIT_EXCLUDE_IDLE;
+        const EXCLUDE_IDLE = 0;
         /// include mmap data
-        const MMAP = ATTR_FLAG_BIT_MMAP;
+        const MMAP = 0;
         /// include comm data
-        const COMM = ATTR_FLAG_BIT_COMM;
+        const COMM = 0;
         /// use freq, not period
-        const FREQ = ATTR_FLAG_BIT_FREQ;
+        const FREQ = 0;
         /// per task counts
-        const INHERIT_STAT = ATTR_FLAG_BIT_INHERIT_STAT;
+        const INHERIT_STAT = 0;
         /// next exec enables
-        const ENABLE_ON_EXEC = ATTR_FLAG_BIT_ENABLE_ON_EXEC;
+        const ENABLE_ON_EXEC = 0;
         /// trace fork/exit
-        const TASK = ATTR_FLAG_BIT_TASK;
+        const TASK = 0;
         /// wakeup_watermark
-        const WATERMARK = ATTR_FLAG_BIT_WATERMARK;
+        const WATERMARK = 0;
         /// one of the two PRECISE_IP bitmask bits
         const PRECISE_IP_BIT_15 = 1 << 15;
         /// one of the two PRECISE_IP bitmask bits
         const PRECISE_IP_BIT_16 = 1 << 16;
         /// the full PRECISE_IP bitmask
-        const PRECISE_IP_BITMASK = ATTR_FLAG_BITMASK_PRECISE_IP;
+        const PRECISE_IP_BITMASK = 0;
         /// non-exec mmap data
-        const MMAP_DATA = ATTR_FLAG_BIT_MMAP_DATA;
+        const MMAP_DATA = 0;
         /// sample_type all events
-        const SAMPLE_ID_ALL = ATTR_FLAG_BIT_SAMPLE_ID_ALL;
+        const SAMPLE_ID_ALL = 0;
         /// don't count in host
-        const EXCLUDE_HOST = ATTR_FLAG_BIT_EXCLUDE_HOST;
+        const EXCLUDE_HOST = 0;
         /// don't count in guest
-        const EXCLUDE_GUEST = ATTR_FLAG_BIT_EXCLUDE_GUEST;
+        const EXCLUDE_GUEST = 0;
         /// exclude kernel callchains
-        const EXCLUDE_CALLCHAIN_KERNEL = ATTR_FLAG_BIT_EXCLUDE_CALLCHAIN_KERNEL;
+        const EXCLUDE_CALLCHAIN_KERNEL = 0;
         /// exclude user callchains
-        const EXCLUDE_CALLCHAIN_USER = ATTR_FLAG_BIT_EXCLUDE_CALLCHAIN_USER;
+        const EXCLUDE_CALLCHAIN_USER = 0;
         /// include mmap with inode data
-        const MMAP2 = ATTR_FLAG_BIT_MMAP2;
+        const MMAP2 = 0;
         /// flag comm events that are due to exec
-        const COMM_EXEC = ATTR_FLAG_BIT_COMM_EXEC;
+        const COMM_EXEC = 0;
         /// use @clockid for time fields
-        const USE_CLOCKID = ATTR_FLAG_BIT_USE_CLOCKID;
+        const USE_CLOCKID = 0;
         /// context switch data
-        const CONTEXT_SWITCH = ATTR_FLAG_BIT_CONTEXT_SWITCH;
+        const CONTEXT_SWITCH = 0;
         /// Write ring buffer from end to beginning
-        const WRITE_BACKWARD = ATTR_FLAG_BIT_WRITE_BACKWARD;
+        const WRITE_BACKWARD = 0;
         /// include namespaces data
-        const NAMESPACES = ATTR_FLAG_BIT_NAMESPACES;
+        const NAMESPACES = 0;
         /// include ksymbol events
-        const KSYMBOL = ATTR_FLAG_BIT_KSYMBOL;
+        const KSYMBOL = 0;
         /// include bpf events
-        const BPF_EVENT = ATTR_FLAG_BIT_BPF_EVENT;
+        const BPF_EVENT = 0;
         /// generate AUX records instead of events
-        const AUX_OUTPUT = ATTR_FLAG_BIT_AUX_OUTPUT;
+        const AUX_OUTPUT = 0;
         /// include cgroup events
-        const CGROUP = ATTR_FLAG_BIT_CGROUP;
+        const CGROUP = 0;
         /// include text poke events
-        const TEXT_POKE = ATTR_FLAG_BIT_TEXT_POKE;
+        const TEXT_POKE = 0;
         /// use build id in mmap2 events
-        const BUILD_ID = ATTR_FLAG_BIT_BUILD_ID;
+        const BUILD_ID = 0;
         /// children only inherit if cloned with CLONE_THREAD
-        const INHERIT_THREAD = ATTR_FLAG_BIT_INHERIT_THREAD;
+        const INHERIT_THREAD = 0;
         /// event is removed from task on exec
-        const REMOVE_ON_EXEC = ATTR_FLAG_BIT_REMOVE_ON_EXEC;
+        const REMOVE_ON_EXEC = 0;
         /// send synchronous SIGTRAP on event
-        const SIGTRAP = ATTR_FLAG_BIT_SIGTRAP;
+        const SIGTRAP = 0;
     }
 
     pub struct HwBreakpointType: u32 {
@@ -187,10 +187,10 @@ bitflags! {
     /// };
     /// ```
     pub struct ReadFormat: u64 {
-        const TOTAL_TIME_ENABLED = PERF_FORMAT_TOTAL_TIME_ENABLED;
-        const TOTAL_TIME_RUNNING = PERF_FORMAT_TOTAL_TIME_RUNNING;
-        const ID = PERF_FORMAT_ID;
-        const GROUP = PERF_FORMAT_GROUP;
+        const TOTAL_TIME_ENABLED = PERF_FORMAT_TOTAL_TIME_ENABLED as u64;
+        const TOTAL_TIME_RUNNING = PERF_FORMAT_TOTAL_TIME_RUNNING as u64;
+        const ID = PERF_FORMAT_ID as u64;
+        const GROUP = PERF_FORMAT_GROUP as u64;
     }
 }
 
@@ -283,12 +283,14 @@ impl RecordType {
     pub const TEXT_POKE: Self = Self(PERF_RECORD_TEXT_POKE);
     pub const AUX_OUTPUT_HW_ID: Self = Self(PERF_RECORD_AUX_OUTPUT_HW_ID);
 
+    pub const USER_TYPE_START: u32 = 64;
+
     pub fn is_builtin_type(&self) -> bool {
-        self.0 < PERF_RECORD_USER_TYPE_START
+        self.0 < Self::USER_TYPE_START
     }
 
     pub fn is_user_type(&self) -> bool {
-        self.0 >= PERF_RECORD_USER_TYPE_START
+        self.0 >= Self::USER_TYPE_START
     }
 }
 
@@ -341,7 +343,7 @@ pub enum CpuMode {
 impl CpuMode {
     /// Initialize from the misc field of the perf event header.
     pub fn from_misc(misc: u16) -> Self {
-        match misc & PERF_RECORD_MISC_CPUMODE_MASK {
+        match misc as u32 & PERF_RECORD_MISC_CPUMODE_MASK {
             PERF_RECORD_MISC_CPUMODE_UNKNOWN => Self::Unknown,
             PERF_RECORD_MISC_KERNEL => Self::Kernel,
             PERF_RECORD_MISC_USER => Self::User,

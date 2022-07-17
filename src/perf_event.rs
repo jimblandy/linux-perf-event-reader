@@ -1,6 +1,6 @@
-use crate::constants::*;
 use crate::types::*;
 use byteorder::{ByteOrder, ReadBytesExt};
+use perf_event_open_sys::bindings::*;
 use std::io;
 use std::io::Read;
 use std::num::NonZeroU64;
@@ -406,7 +406,7 @@ pub enum HardwareEventId {
 
 impl HardwareEventId {
     pub fn parse(hardware_event_id: u8) -> Option<Self> {
-        let t = match hardware_event_id {
+        let t = match hardware_event_id as perf_hw_id {
             PERF_COUNT_HW_CPU_CYCLES => Self::CpuCycles,
             PERF_COUNT_HW_INSTRUCTIONS => Self::Instructions,
             PERF_COUNT_HW_CACHE_REFERENCES => Self::CacheReferences,
@@ -454,7 +454,7 @@ pub enum SoftwareCounterType {
 
 impl SoftwareCounterType {
     pub fn parse(config: u64) -> Option<Self> {
-        let t = match config {
+        let t = match config as perf_sw_ids {
             PERF_COUNT_SW_CPU_CLOCK => Self::CpuClock,
             PERF_COUNT_SW_TASK_CLOCK => Self::TaskClock,
             PERF_COUNT_SW_PAGE_FAULTS => Self::PageFaults,
@@ -494,7 +494,7 @@ pub enum HardwareCacheId {
 
 impl HardwareCacheId {
     pub fn parse(cache_id: u8) -> Option<Self> {
-        let rv = match cache_id {
+        let rv = match cache_id as perf_hw_cache_id {
             PERF_COUNT_HW_CACHE_L1D => Self::L1d,
             PERF_COUNT_HW_CACHE_L1I => Self::L1i,
             PERF_COUNT_HW_CACHE_LL => Self::Ll,
@@ -520,7 +520,7 @@ pub enum HardwareCacheOp {
 
 impl HardwareCacheOp {
     pub fn parse(cache_op: u8) -> Option<Self> {
-        match cache_op {
+        match cache_op as perf_hw_cache_op_id {
             PERF_COUNT_HW_CACHE_OP_READ => Some(Self::Read),
             PERF_COUNT_HW_CACHE_OP_WRITE => Some(Self::Write),
             PERF_COUNT_HW_CACHE_OP_PREFETCH => Some(Self::Prefetch),
@@ -539,7 +539,7 @@ pub enum HardwareCacheOpResult {
 
 impl HardwareCacheOpResult {
     pub fn parse(cache_op_result: u8) -> Option<Self> {
-        match cache_op_result {
+        match cache_op_result as perf_hw_cache_op_result_id {
             PERF_COUNT_HW_CACHE_RESULT_ACCESS => Some(Self::Access),
             PERF_COUNT_HW_CACHE_RESULT_MISS => Some(Self::Miss),
             _ => None,

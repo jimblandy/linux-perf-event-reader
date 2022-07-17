@@ -1,10 +1,10 @@
 use crate::raw_data::RawData;
 use crate::utils::HexValue;
 use crate::{
-    constants, CommonData, CpuMode, Endianness, RecordIdParseInfo, RecordParseInfo, RecordType,
-    SampleRecord,
+    CommonData, CpuMode, Endianness, RecordIdParseInfo, RecordParseInfo, RecordType, SampleRecord,
 };
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use perf_event_open_sys::bindings;
 use std::fmt;
 
 /// Get the ID from an event record, if the sample format includes SampleFormat::IDENTIFIER.
@@ -156,7 +156,7 @@ impl<'a> CommOrExecRecord<'a> {
         let name = cur.read_string().unwrap_or(cur); // TODO: return error if no string terminator found
 
         // TODO: Maybe feature-gate this on 3.16+
-        let is_execve = misc & constants::PERF_RECORD_MISC_COMM_EXEC != 0;
+        let is_execve = misc & bindings::PERF_RECORD_MISC_COMM_EXEC as u16 != 0;
 
         Ok(Self {
             pid,
@@ -224,7 +224,7 @@ impl<'a> MmapRecord<'a> {
         let length = cur.read_u64::<T>()?;
         let page_offset = cur.read_u64::<T>()?;
         let path = cur.read_string().unwrap_or(cur); // TODO: return error if no string terminator found
-        let is_executable = misc & constants::PERF_RECORD_MISC_MMAP_DATA == 0;
+        let is_executable = misc & bindings::PERF_RECORD_MISC_MMAP_DATA as u16 == 0;
 
         Ok(MmapRecord {
             pid,
@@ -282,7 +282,7 @@ impl<'a> Mmap2Record<'a> {
         let address = cur.read_u64::<T>()?;
         let length = cur.read_u64::<T>()?;
         let page_offset = cur.read_u64::<T>()?;
-        let file_id = if misc & constants::PERF_RECORD_MISC_MMAP_BUILD_ID != 0 {
+        let file_id = if misc & bindings::PERF_RECORD_MISC_MMAP_BUILD_ID as u16 != 0 {
             let build_id_len = cur.read_u8()?;
             assert!(build_id_len <= 20);
             let _align = cur.read_u8()?;
@@ -408,9 +408,9 @@ impl ContextSwitchRecord {
     }
 
     pub fn from_misc_pid_tid(misc: u16, pid: Option<i32>, tid: Option<i32>) -> Self {
-        let is_out = misc & constants::PERF_RECORD_MISC_SWITCH_OUT != 0;
+        let is_out = misc & bindings::PERF_RECORD_MISC_SWITCH_OUT as u16 != 0;
         if is_out {
-            let is_out_preempt = misc & constants::PERF_RECORD_MISC_SWITCH_OUT_PREEMPT != 0;
+            let is_out_preempt = misc & bindings::PERF_RECORD_MISC_SWITCH_OUT_PREEMPT as u16 != 0;
             ContextSwitchRecord::Out {
                 next_pid: pid,
                 next_tid: tid,

@@ -41,7 +41,6 @@
 //! # }
 //! ```
 mod common_data;
-pub mod constants;
 mod endian;
 mod event_record;
 mod parse_info;
