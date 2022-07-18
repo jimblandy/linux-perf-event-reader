@@ -1,6 +1,6 @@
 use crate::types::*;
 use byteorder::{ByteOrder, ReadBytesExt};
-use perf_event_open_sys::bindings::*;
+use perf_event_open_sys::bindings as sys;
 use std::io;
 use std::io::Read;
 use std::num::NonZeroU64;
@@ -94,7 +94,7 @@ impl PerfEventAttr {
         let config = reader.read_u64::<T>()?;
 
         let size = size.unwrap_or(self_described_size);
-        if size < PERF_ATTR_SIZE_VER0 {
+        if size < sys::PERF_ATTR_SIZE_VER0 {
             return Err(io::ErrorKind::InvalidInput.into());
         }
 
@@ -106,19 +106,19 @@ impl PerfEventAttr {
         let bp_type = reader.read_u32::<T>()?;
         let bp_addr_or_kprobe_func_or_uprobe_func_or_config1 = reader.read_u64::<T>()?;
 
-        let bp_len_or_kprobe_addr_or_probe_offset_or_config2 = if size >= PERF_ATTR_SIZE_VER1 {
+        let bp_len_or_kprobe_addr_or_probe_offset_or_config2 = if size >= sys::PERF_ATTR_SIZE_VER1 {
             reader.read_u64::<T>()?
         } else {
             0
         };
 
-        let branch_sample_type = if size >= PERF_ATTR_SIZE_VER2 {
+        let branch_sample_type = if size >= sys::PERF_ATTR_SIZE_VER2 {
             reader.read_u64::<T>()?
         } else {
             0
         };
 
-        let (sample_regs_user, sample_stack_user, clockid) = if size >= PERF_ATTR_SIZE_VER3 {
+        let (sample_regs_user, sample_stack_user, clockid) = if size >= sys::PERF_ATTR_SIZE_VER3 {
             let sample_regs_user = reader.read_u64::<T>()?;
             let sample_stack_user = reader.read_u32::<T>()?;
             let clockid = reader.read_u32::<T>()?;
@@ -128,13 +128,13 @@ impl PerfEventAttr {
             (0, 0, 0)
         };
 
-        let sample_regs_intr = if size >= PERF_ATTR_SIZE_VER4 {
+        let sample_regs_intr = if size >= sys::PERF_ATTR_SIZE_VER4 {
             reader.read_u64::<T>()?
         } else {
             0
         };
 
-        let (aux_watermark, sample_max_stack) = if size >= PERF_ATTR_SIZE_VER5 {
+        let (aux_watermark, sample_max_stack) = if size >= sys::PERF_ATTR_SIZE_VER5 {
             let aux_watermark = reader.read_u32::<T>()?;
             let sample_max_stack = reader.read_u16::<T>()?;
             let __reserved_2 = reader.read_u16::<T>()?;
@@ -143,7 +143,7 @@ impl PerfEventAttr {
             (0, 0)
         };
 
-        let aux_sample_size = if size >= PERF_ATTR_SIZE_VER6 {
+        let aux_sample_size = if size >= sys::PERF_ATTR_SIZE_VER6 {
             let aux_sample_size = reader.read_u32::<T>()?;
             let __reserved_3 = reader.read_u32::<T>()?;
             aux_sample_size
@@ -151,15 +151,15 @@ impl PerfEventAttr {
             0
         };
 
-        let sig_data = if size >= PERF_ATTR_SIZE_VER7 {
+        let sig_data = if size >= sys::PERF_ATTR_SIZE_VER7 {
             reader.read_u64::<T>()?
         } else {
             0
         };
 
         // Consume any remaining bytes.
-        if size > PERF_ATTR_SIZE_VER7 {
-            let remaining = size - PERF_ATTR_SIZE_VER7;
+        if size > sys::PERF_ATTR_SIZE_VER7 {
+            let remaining = size - sys::PERF_ATTR_SIZE_VER7;
             io::copy(&mut reader.by_ref().take(remaining.into()), &mut io::sink())?;
         }
 
@@ -339,7 +339,7 @@ impl PerfEventType {
         config2: u64,
     ) -> Option<Self> {
         let t = match type_ {
-            PERF_TYPE_HARDWARE => {
+            sys::PERF_TYPE_HARDWARE => {
                 // Config format: 0xEEEEEEEE000000AA
                 //
                 //  - AA: hardware event ID
@@ -348,9 +348,9 @@ impl PerfEventType {
                 let pmu_type = PmuTypeId((config >> 32) as u32);
                 Self::Hardware(HardwareEventId::parse(hardware_event_id)?, pmu_type)
             }
-            PERF_TYPE_SOFTWARE => Self::Software(SoftwareCounterType::parse(config)?),
-            PERF_TYPE_TRACEPOINT => Self::Tracepoint(config),
-            PERF_TYPE_HW_CACHE => {
+            sys::PERF_TYPE_SOFTWARE => Self::Software(SoftwareCounterType::parse(config)?),
+            sys::PERF_TYPE_TRACEPOINT => Self::Tracepoint(config),
+            sys::PERF_TYPE_HW_CACHE => {
                 // Config format: 0xEEEEEEEE00DDCCBB
                 //
                 //  - BB: hardware cache ID
@@ -368,7 +368,7 @@ impl PerfEventType {
                     pmu_type,
                 )
             }
-            PERF_TYPE_BREAKPOINT => {
+            sys::PERF_TYPE_BREAKPOINT => {
                 let bp_type = HwBreakpointType::from_bits_truncate(bp_type);
                 Self::Breakpoint(bp_type, HwBreakpointAddr(config1), HwBreakpointLen(config2))
             }
@@ -406,17 +406,17 @@ pub enum HardwareEventId {
 
 impl HardwareEventId {
     pub fn parse(hardware_event_id: u8) -> Option<Self> {
-        let t = match hardware_event_id as perf_hw_id {
-            PERF_COUNT_HW_CPU_CYCLES => Self::CpuCycles,
-            PERF_COUNT_HW_INSTRUCTIONS => Self::Instructions,
-            PERF_COUNT_HW_CACHE_REFERENCES => Self::CacheReferences,
-            PERF_COUNT_HW_CACHE_MISSES => Self::CacheMisses,
-            PERF_COUNT_HW_BRANCH_INSTRUCTIONS => Self::BranchInstructions,
-            PERF_COUNT_HW_BRANCH_MISSES => Self::BranchMisses,
-            PERF_COUNT_HW_BUS_CYCLES => Self::BusCycles,
-            PERF_COUNT_HW_STALLED_CYCLES_FRONTEND => Self::StalledCyclesFrontend,
-            PERF_COUNT_HW_STALLED_CYCLES_BACKEND => Self::StalledCyclesBackend,
-            PERF_COUNT_HW_REF_CPU_CYCLES => Self::RefCpuCycles,
+        let t = match hardware_event_id as sys::perf_hw_id {
+            sys::PERF_COUNT_HW_CPU_CYCLES => Self::CpuCycles,
+            sys::PERF_COUNT_HW_INSTRUCTIONS => Self::Instructions,
+            sys::PERF_COUNT_HW_CACHE_REFERENCES => Self::CacheReferences,
+            sys::PERF_COUNT_HW_CACHE_MISSES => Self::CacheMisses,
+            sys::PERF_COUNT_HW_BRANCH_INSTRUCTIONS => Self::BranchInstructions,
+            sys::PERF_COUNT_HW_BRANCH_MISSES => Self::BranchMisses,
+            sys::PERF_COUNT_HW_BUS_CYCLES => Self::BusCycles,
+            sys::PERF_COUNT_HW_STALLED_CYCLES_FRONTEND => Self::StalledCyclesFrontend,
+            sys::PERF_COUNT_HW_STALLED_CYCLES_BACKEND => Self::StalledCyclesBackend,
+            sys::PERF_COUNT_HW_REF_CPU_CYCLES => Self::RefCpuCycles,
             _ => return None,
         };
         Some(t)
@@ -454,19 +454,19 @@ pub enum SoftwareCounterType {
 
 impl SoftwareCounterType {
     pub fn parse(config: u64) -> Option<Self> {
-        let t = match config as perf_sw_ids {
-            PERF_COUNT_SW_CPU_CLOCK => Self::CpuClock,
-            PERF_COUNT_SW_TASK_CLOCK => Self::TaskClock,
-            PERF_COUNT_SW_PAGE_FAULTS => Self::PageFaults,
-            PERF_COUNT_SW_CONTEXT_SWITCHES => Self::ContextSwitches,
-            PERF_COUNT_SW_CPU_MIGRATIONS => Self::CpuMigrations,
-            PERF_COUNT_SW_PAGE_FAULTS_MIN => Self::PageFaultsMin,
-            PERF_COUNT_SW_PAGE_FAULTS_MAJ => Self::PageFaultsMaj,
-            PERF_COUNT_SW_ALIGNMENT_FAULTS => Self::AlignmentFaults,
-            PERF_COUNT_SW_EMULATION_FAULTS => Self::EmulationFaults,
-            PERF_COUNT_SW_DUMMY => Self::Dummy,
-            PERF_COUNT_SW_BPF_OUTPUT => Self::BpfOutput,
-            PERF_COUNT_SW_CGROUP_SWITCHES => Self::CgroupSwitches,
+        let t = match config as sys::perf_sw_ids {
+            sys::PERF_COUNT_SW_CPU_CLOCK => Self::CpuClock,
+            sys::PERF_COUNT_SW_TASK_CLOCK => Self::TaskClock,
+            sys::PERF_COUNT_SW_PAGE_FAULTS => Self::PageFaults,
+            sys::PERF_COUNT_SW_CONTEXT_SWITCHES => Self::ContextSwitches,
+            sys::PERF_COUNT_SW_CPU_MIGRATIONS => Self::CpuMigrations,
+            sys::PERF_COUNT_SW_PAGE_FAULTS_MIN => Self::PageFaultsMin,
+            sys::PERF_COUNT_SW_PAGE_FAULTS_MAJ => Self::PageFaultsMaj,
+            sys::PERF_COUNT_SW_ALIGNMENT_FAULTS => Self::AlignmentFaults,
+            sys::PERF_COUNT_SW_EMULATION_FAULTS => Self::EmulationFaults,
+            sys::PERF_COUNT_SW_DUMMY => Self::Dummy,
+            sys::PERF_COUNT_SW_BPF_OUTPUT => Self::BpfOutput,
+            sys::PERF_COUNT_SW_CGROUP_SWITCHES => Self::CgroupSwitches,
             _ => return None,
         };
         Some(t)
@@ -494,14 +494,14 @@ pub enum HardwareCacheId {
 
 impl HardwareCacheId {
     pub fn parse(cache_id: u8) -> Option<Self> {
-        let rv = match cache_id as perf_hw_cache_id {
-            PERF_COUNT_HW_CACHE_L1D => Self::L1d,
-            PERF_COUNT_HW_CACHE_L1I => Self::L1i,
-            PERF_COUNT_HW_CACHE_LL => Self::Ll,
-            PERF_COUNT_HW_CACHE_DTLB => Self::Dtlb,
-            PERF_COUNT_HW_CACHE_ITLB => Self::Itlb,
-            PERF_COUNT_HW_CACHE_BPU => Self::Bpu,
-            PERF_COUNT_HW_CACHE_NODE => Self::Node,
+        let rv = match cache_id as sys::perf_hw_cache_id {
+            sys::PERF_COUNT_HW_CACHE_L1D => Self::L1d,
+            sys::PERF_COUNT_HW_CACHE_L1I => Self::L1i,
+            sys::PERF_COUNT_HW_CACHE_LL => Self::Ll,
+            sys::PERF_COUNT_HW_CACHE_DTLB => Self::Dtlb,
+            sys::PERF_COUNT_HW_CACHE_ITLB => Self::Itlb,
+            sys::PERF_COUNT_HW_CACHE_BPU => Self::Bpu,
+            sys::PERF_COUNT_HW_CACHE_NODE => Self::Node,
             _ => return None,
         };
         Some(rv)
@@ -520,10 +520,10 @@ pub enum HardwareCacheOp {
 
 impl HardwareCacheOp {
     pub fn parse(cache_op: u8) -> Option<Self> {
-        match cache_op as perf_hw_cache_op_id {
-            PERF_COUNT_HW_CACHE_OP_READ => Some(Self::Read),
-            PERF_COUNT_HW_CACHE_OP_WRITE => Some(Self::Write),
-            PERF_COUNT_HW_CACHE_OP_PREFETCH => Some(Self::Prefetch),
+        match cache_op as sys::perf_hw_cache_op_id {
+            sys::PERF_COUNT_HW_CACHE_OP_READ => Some(Self::Read),
+            sys::PERF_COUNT_HW_CACHE_OP_WRITE => Some(Self::Write),
+            sys::PERF_COUNT_HW_CACHE_OP_PREFETCH => Some(Self::Prefetch),
             _ => None,
         }
     }
@@ -539,9 +539,9 @@ pub enum HardwareCacheOpResult {
 
 impl HardwareCacheOpResult {
     pub fn parse(cache_op_result: u8) -> Option<Self> {
-        match cache_op_result as perf_hw_cache_op_result_id {
-            PERF_COUNT_HW_CACHE_RESULT_ACCESS => Some(Self::Access),
-            PERF_COUNT_HW_CACHE_RESULT_MISS => Some(Self::Miss),
+        match cache_op_result as sys::perf_hw_cache_op_result_id {
+            sys::PERF_COUNT_HW_CACHE_RESULT_ACCESS => Some(Self::Access),
+            sys::PERF_COUNT_HW_CACHE_RESULT_MISS => Some(Self::Miss),
             _ => None,
         }
     }

@@ -1,72 +1,72 @@
 use bitflags::bitflags;
-use perf_event_open_sys::bindings::*;
+use perf_event_open_sys::bindings as sys;
 
 bitflags! {
     pub struct SampleFormat: u64 {
-        const IP = PERF_SAMPLE_IP;
-        const TID = PERF_SAMPLE_TID;
-        const TIME = PERF_SAMPLE_TIME;
-        const ADDR = PERF_SAMPLE_ADDR;
-        const READ = PERF_SAMPLE_READ;
-        const CALLCHAIN = PERF_SAMPLE_CALLCHAIN;
-        const ID = PERF_SAMPLE_ID;
-        const CPU = PERF_SAMPLE_CPU;
-        const PERIOD = PERF_SAMPLE_PERIOD;
-        const STREAM_ID = PERF_SAMPLE_STREAM_ID;
-        const RAW = PERF_SAMPLE_RAW;
-        const BRANCH_STACK = PERF_SAMPLE_BRANCH_STACK;
-        const REGS_USER = PERF_SAMPLE_REGS_USER;
-        const STACK_USER = PERF_SAMPLE_STACK_USER;
-        const WEIGHT = PERF_SAMPLE_WEIGHT;
-        const DATA_SRC = PERF_SAMPLE_DATA_SRC;
-        const IDENTIFIER = PERF_SAMPLE_IDENTIFIER;
-        const TRANSACTION = PERF_SAMPLE_TRANSACTION;
-        const REGS_INTR = PERF_SAMPLE_REGS_INTR;
-        const PHYS_ADDR = PERF_SAMPLE_PHYS_ADDR;
-        const AUX = PERF_SAMPLE_AUX;
-        const CGROUP = PERF_SAMPLE_CGROUP;
-        const DATA_PAGE_SIZE = PERF_SAMPLE_DATA_PAGE_SIZE;
-        const CODE_PAGE_SIZE = PERF_SAMPLE_CODE_PAGE_SIZE;
-        const WEIGHT_STRUCT = PERF_SAMPLE_WEIGHT_STRUCT;
+        const IP = sys::PERF_SAMPLE_IP;
+        const TID = sys::PERF_SAMPLE_TID;
+        const TIME = sys::PERF_SAMPLE_TIME;
+        const ADDR = sys::PERF_SAMPLE_ADDR;
+        const READ = sys::PERF_SAMPLE_READ;
+        const CALLCHAIN = sys::PERF_SAMPLE_CALLCHAIN;
+        const ID = sys::PERF_SAMPLE_ID;
+        const CPU = sys::PERF_SAMPLE_CPU;
+        const PERIOD = sys::PERF_SAMPLE_PERIOD;
+        const STREAM_ID = sys::PERF_SAMPLE_STREAM_ID;
+        const RAW = sys::PERF_SAMPLE_RAW;
+        const BRANCH_STACK = sys::PERF_SAMPLE_BRANCH_STACK;
+        const REGS_USER = sys::PERF_SAMPLE_REGS_USER;
+        const STACK_USER = sys::PERF_SAMPLE_STACK_USER;
+        const WEIGHT = sys::PERF_SAMPLE_WEIGHT;
+        const DATA_SRC = sys::PERF_SAMPLE_DATA_SRC;
+        const IDENTIFIER = sys::PERF_SAMPLE_IDENTIFIER;
+        const TRANSACTION = sys::PERF_SAMPLE_TRANSACTION;
+        const REGS_INTR = sys::PERF_SAMPLE_REGS_INTR;
+        const PHYS_ADDR = sys::PERF_SAMPLE_PHYS_ADDR;
+        const AUX = sys::PERF_SAMPLE_AUX;
+        const CGROUP = sys::PERF_SAMPLE_CGROUP;
+        const DATA_PAGE_SIZE = sys::PERF_SAMPLE_DATA_PAGE_SIZE;
+        const CODE_PAGE_SIZE = sys::PERF_SAMPLE_CODE_PAGE_SIZE;
+        const WEIGHT_STRUCT = sys::PERF_SAMPLE_WEIGHT_STRUCT;
     }
 
     pub struct BranchSampleFormat: u64 {
         /// user branches
-        const USER = PERF_SAMPLE_BRANCH_USER as u64;
+        const USER = sys::PERF_SAMPLE_BRANCH_USER as u64;
         /// kernel branches
-        const KERNEL = PERF_SAMPLE_BRANCH_KERNEL as u64;
+        const KERNEL = sys::PERF_SAMPLE_BRANCH_KERNEL as u64;
         /// hypervisor branches
-        const HV = PERF_SAMPLE_BRANCH_HV as u64;
+        const HV = sys::PERF_SAMPLE_BRANCH_HV as u64;
         /// any branch types
-        const ANY = PERF_SAMPLE_BRANCH_ANY as u64;
+        const ANY = sys::PERF_SAMPLE_BRANCH_ANY as u64;
         /// any call branch
-        const ANY_CALL = PERF_SAMPLE_BRANCH_ANY_CALL as u64;
+        const ANY_CALL = sys::PERF_SAMPLE_BRANCH_ANY_CALL as u64;
         /// any return branch
-        const ANY_RETURN = PERF_SAMPLE_BRANCH_ANY_RETURN as u64;
+        const ANY_RETURN = sys::PERF_SAMPLE_BRANCH_ANY_RETURN as u64;
         /// indirect calls
-        const IND_CALL = PERF_SAMPLE_BRANCH_IND_CALL as u64;
+        const IND_CALL = sys::PERF_SAMPLE_BRANCH_IND_CALL as u64;
         /// transaction aborts
-        const ABORT_TX = PERF_SAMPLE_BRANCH_ABORT_TX as u64;
+        const ABORT_TX = sys::PERF_SAMPLE_BRANCH_ABORT_TX as u64;
         /// in transaction
-        const IN_TX = PERF_SAMPLE_BRANCH_IN_TX as u64;
+        const IN_TX = sys::PERF_SAMPLE_BRANCH_IN_TX as u64;
         /// not in transaction
-        const NO_TX = PERF_SAMPLE_BRANCH_NO_TX as u64;
+        const NO_TX = sys::PERF_SAMPLE_BRANCH_NO_TX as u64;
         /// conditional branches
-        const COND = PERF_SAMPLE_BRANCH_COND as u64;
+        const COND = sys::PERF_SAMPLE_BRANCH_COND as u64;
         /// call/ret stack
-        const CALL_STACK = PERF_SAMPLE_BRANCH_CALL_STACK as u64;
+        const CALL_STACK = sys::PERF_SAMPLE_BRANCH_CALL_STACK as u64;
         /// indirect jumps
-        const IND_JUMP = PERF_SAMPLE_BRANCH_IND_JUMP as u64;
+        const IND_JUMP = sys::PERF_SAMPLE_BRANCH_IND_JUMP as u64;
         /// direct call
-        const CALL = PERF_SAMPLE_BRANCH_CALL as u64;
+        const CALL = sys::PERF_SAMPLE_BRANCH_CALL as u64;
         /// no flags
-        const NO_FLAGS = PERF_SAMPLE_BRANCH_NO_FLAGS as u64;
+        const NO_FLAGS = sys::PERF_SAMPLE_BRANCH_NO_FLAGS as u64;
         /// no cycles
-        const NO_CYCLES = PERF_SAMPLE_BRANCH_NO_CYCLES as u64;
+        const NO_CYCLES = sys::PERF_SAMPLE_BRANCH_NO_CYCLES as u64;
         /// save branch type
-        const TYPE_SAVE = PERF_SAMPLE_BRANCH_TYPE_SAVE as u64;
+        const TYPE_SAVE = sys::PERF_SAMPLE_BRANCH_TYPE_SAVE as u64;
         /// save low level index of raw branch records
-        const HW_INDEX = PERF_SAMPLE_BRANCH_HW_INDEX as u64;
+        const HW_INDEX = sys::PERF_SAMPLE_BRANCH_HW_INDEX as u64;
     }
 
     pub struct AttrFlags: u64 {
@@ -187,10 +187,10 @@ bitflags! {
     /// };
     /// ```
     pub struct ReadFormat: u64 {
-        const TOTAL_TIME_ENABLED = PERF_FORMAT_TOTAL_TIME_ENABLED as u64;
-        const TOTAL_TIME_RUNNING = PERF_FORMAT_TOTAL_TIME_RUNNING as u64;
-        const ID = PERF_FORMAT_ID as u64;
-        const GROUP = PERF_FORMAT_GROUP as u64;
+        const TOTAL_TIME_ENABLED = sys::PERF_FORMAT_TOTAL_TIME_ENABLED as u64;
+        const TOTAL_TIME_RUNNING = sys::PERF_FORMAT_TOTAL_TIME_RUNNING as u64;
+        const ID = sys::PERF_FORMAT_ID as u64;
+        const GROUP = sys::PERF_FORMAT_GROUP as u64;
     }
 }
 
@@ -261,27 +261,27 @@ pub struct RecordType(pub u32);
 
 impl RecordType {
     // Kernel-built-in record types
-    pub const MMAP: Self = Self(PERF_RECORD_MMAP);
-    pub const LOST: Self = Self(PERF_RECORD_LOST);
-    pub const COMM: Self = Self(PERF_RECORD_COMM);
-    pub const EXIT: Self = Self(PERF_RECORD_EXIT);
-    pub const THROTTLE: Self = Self(PERF_RECORD_THROTTLE);
-    pub const UNTHROTTLE: Self = Self(PERF_RECORD_UNTHROTTLE);
-    pub const FORK: Self = Self(PERF_RECORD_FORK);
-    pub const READ: Self = Self(PERF_RECORD_READ);
-    pub const SAMPLE: Self = Self(PERF_RECORD_SAMPLE);
-    pub const MMAP2: Self = Self(PERF_RECORD_MMAP2);
-    pub const AUX: Self = Self(PERF_RECORD_AUX);
-    pub const ITRACE_START: Self = Self(PERF_RECORD_ITRACE_START);
-    pub const LOST_SAMPLES: Self = Self(PERF_RECORD_LOST_SAMPLES);
-    pub const SWITCH: Self = Self(PERF_RECORD_SWITCH);
-    pub const SWITCH_CPU_WIDE: Self = Self(PERF_RECORD_SWITCH_CPU_WIDE);
-    pub const NAMESPACES: Self = Self(PERF_RECORD_NAMESPACES);
-    pub const KSYMBOL: Self = Self(PERF_RECORD_KSYMBOL);
-    pub const BPF_EVENT: Self = Self(PERF_RECORD_BPF_EVENT);
-    pub const CGROUP: Self = Self(PERF_RECORD_CGROUP);
-    pub const TEXT_POKE: Self = Self(PERF_RECORD_TEXT_POKE);
-    pub const AUX_OUTPUT_HW_ID: Self = Self(PERF_RECORD_AUX_OUTPUT_HW_ID);
+    pub const MMAP: Self = Self(sys::PERF_RECORD_MMAP);
+    pub const LOST: Self = Self(sys::PERF_RECORD_LOST);
+    pub const COMM: Self = Self(sys::PERF_RECORD_COMM);
+    pub const EXIT: Self = Self(sys::PERF_RECORD_EXIT);
+    pub const THROTTLE: Self = Self(sys::PERF_RECORD_THROTTLE);
+    pub const UNTHROTTLE: Self = Self(sys::PERF_RECORD_UNTHROTTLE);
+    pub const FORK: Self = Self(sys::PERF_RECORD_FORK);
+    pub const READ: Self = Self(sys::PERF_RECORD_READ);
+    pub const SAMPLE: Self = Self(sys::PERF_RECORD_SAMPLE);
+    pub const MMAP2: Self = Self(sys::PERF_RECORD_MMAP2);
+    pub const AUX: Self = Self(sys::PERF_RECORD_AUX);
+    pub const ITRACE_START: Self = Self(sys::PERF_RECORD_ITRACE_START);
+    pub const LOST_SAMPLES: Self = Self(sys::PERF_RECORD_LOST_SAMPLES);
+    pub const SWITCH: Self = Self(sys::PERF_RECORD_SWITCH);
+    pub const SWITCH_CPU_WIDE: Self = Self(sys::PERF_RECORD_SWITCH_CPU_WIDE);
+    pub const NAMESPACES: Self = Self(sys::PERF_RECORD_NAMESPACES);
+    pub const KSYMBOL: Self = Self(sys::PERF_RECORD_KSYMBOL);
+    pub const BPF_EVENT: Self = Self(sys::PERF_RECORD_BPF_EVENT);
+    pub const CGROUP: Self = Self(sys::PERF_RECORD_CGROUP);
+    pub const TEXT_POKE: Self = Self(sys::PERF_RECORD_TEXT_POKE);
+    pub const AUX_OUTPUT_HW_ID: Self = Self(sys::PERF_RECORD_AUX_OUTPUT_HW_ID);
 
     pub const USER_TYPE_START: u32 = 64;
 
@@ -343,13 +343,13 @@ pub enum CpuMode {
 impl CpuMode {
     /// Initialize from the misc field of the perf event header.
     pub fn from_misc(misc: u16) -> Self {
-        match misc as u32 & PERF_RECORD_MISC_CPUMODE_MASK {
-            PERF_RECORD_MISC_CPUMODE_UNKNOWN => Self::Unknown,
-            PERF_RECORD_MISC_KERNEL => Self::Kernel,
-            PERF_RECORD_MISC_USER => Self::User,
-            PERF_RECORD_MISC_HYPERVISOR => Self::Hypervisor,
-            PERF_RECORD_MISC_GUEST_KERNEL => Self::GuestKernel,
-            PERF_RECORD_MISC_GUEST_USER => Self::GuestUser,
+        match misc as u32 & sys::PERF_RECORD_MISC_CPUMODE_MASK {
+            sys::PERF_RECORD_MISC_CPUMODE_UNKNOWN => Self::Unknown,
+            sys::PERF_RECORD_MISC_KERNEL => Self::Kernel,
+            sys::PERF_RECORD_MISC_USER => Self::User,
+            sys::PERF_RECORD_MISC_HYPERVISOR => Self::Hypervisor,
+            sys::PERF_RECORD_MISC_GUEST_KERNEL => Self::GuestKernel,
+            sys::PERF_RECORD_MISC_GUEST_USER => Self::GuestUser,
             _ => Self::Unknown,
         }
     }
