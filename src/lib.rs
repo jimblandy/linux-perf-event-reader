@@ -79,8 +79,7 @@ mod test {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 128, 0,
             0, 0, 0, 0, 0, 0,
         ];
-        let attr =
-            PerfEventAttr::parse::<_, byteorder::LittleEndian>(&attr_data[..], None).unwrap();
+        let attr = PerfEventAttr::parse(&attr_data[..], None).unwrap();
         let parse_info = RecordParseInfo::new(&attr, Endianness::LittleEndian);
 
         let body = b"lG\x08\0lG\x08\0dump_syms\0\0\0\0\0\0\0lG\x08\0lG\x08\08\x1b\xf8\x18hX\x04\0";

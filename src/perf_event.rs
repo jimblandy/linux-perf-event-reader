@@ -1,9 +1,9 @@
 use crate::types::*;
 use byteorder::{ByteOrder, ReadBytesExt};
 use perf_event_open_sys::bindings as sys;
-use std::io;
 use std::io::Read;
 use std::num::NonZeroU64;
+use std::{cmp, io, mem, slice};
 
 /// `perf_event_header`
 #[derive(Debug, Clone, Copy)]
@@ -27,201 +27,314 @@ impl PerfEventHeader {
 /// `perf_event_attr`
 #[derive(Debug, Clone, Copy)]
 pub struct PerfEventAttr {
-    /// The type of the perf event.
-    pub type_: PerfEventType,
-
-    /// The sampling policy.
-    pub sampling_policy: SamplingPolicy,
-
-    /// Specifies values included in sample. (original name `sample_type`)
-    pub sample_format: SampleFormat,
-
-    /// Specifies the structure values returned by read() on a perf event fd,
-    /// see [`ReadFormat`].
-    pub read_format: ReadFormat,
-
-    /// Bitset of flags.
-    pub flags: AttrFlags,
-
-    /// The wake-up policy.
-    pub wakeup_policy: WakeupPolicy,
-
-    /// Branch-sample specific flags.
-    pub branch_sample_format: BranchSampleFormat,
-
-    /// Defines set of user regs to dump on samples.
-    /// See asm/perf_regs.h for details.
-    pub sample_regs_user: u64,
-
-    /// Defines size of the user stack to dump on samples.
-    pub sample_stack_user: u32,
-
-    /// The clock ID.
-    pub clock: PerfClock,
-
-    /// Defines set of regs to dump for each sample
-    /// state captured on:
-    ///  - precise = 0: PMU interrupt
-    ///  - precise > 0: sampled instruction
-    ///
-    /// See asm/perf_regs.h for details.
-    pub sample_regs_intr: u64,
-
-    /// Wakeup watermark for AUX area
-    pub aux_watermark: u32,
-
-    /// When collecting stacks, this is the maximum number of stack frames
-    /// (user + kernel) to collect.
-    pub sample_max_stack: u16,
-
-    /// When sampling AUX events, this is the size of the AUX sample.
-    pub aux_sample_size: u32,
-
-    /// User provided data if sigtrap=1, passed back to user via
-    /// siginfo_t::si_perf_data, e.g. to permit user to identify the event.
-    /// Note, siginfo_t::si_perf_data is long-sized, and sig_data will be
-    /// truncated accordingly on 32 bit architectures.
-    pub sig_data: u64,
+    r#type: PerfEventType,
+    perf_clock: PerfClock,
+    raw: sys::perf_event_attr,
 }
 
 impl PerfEventAttr {
-    pub fn parse<R: Read, T: ByteOrder>(
-        mut reader: R,
-        size: Option<u32>,
-    ) -> Result<Self, std::io::Error> {
-        let type_ = reader.read_u32::<T>()?;
-        let self_described_size = reader.read_u32::<T>()?;
-        let config = reader.read_u64::<T>()?;
-
-        let size = size.unwrap_or(self_described_size);
-        if size < sys::PERF_ATTR_SIZE_VER0 {
-            return Err(io::ErrorKind::InvalidInput.into());
-        }
-
-        let sampling_period_or_frequency = reader.read_u64::<T>()?;
-        let sample_type = reader.read_u64::<T>()?;
-        let read_format = reader.read_u64::<T>()?;
-        let flags = reader.read_u64::<T>()?;
-        let wakeup_events_or_watermark = reader.read_u32::<T>()?;
-        let bp_type = reader.read_u32::<T>()?;
-        let bp_addr_or_kprobe_func_or_uprobe_func_or_config1 = reader.read_u64::<T>()?;
-
-        let bp_len_or_kprobe_addr_or_probe_offset_or_config2 = if size >= sys::PERF_ATTR_SIZE_VER1 {
-            reader.read_u64::<T>()?
-        } else {
-            0
-        };
-
-        let branch_sample_type = if size >= sys::PERF_ATTR_SIZE_VER2 {
-            reader.read_u64::<T>()?
-        } else {
-            0
-        };
-
-        let (sample_regs_user, sample_stack_user, clockid) = if size >= sys::PERF_ATTR_SIZE_VER3 {
-            let sample_regs_user = reader.read_u64::<T>()?;
-            let sample_stack_user = reader.read_u32::<T>()?;
-            let clockid = reader.read_u32::<T>()?;
-
-            (sample_regs_user, sample_stack_user, clockid)
-        } else {
-            (0, 0, 0)
-        };
-
-        let sample_regs_intr = if size >= sys::PERF_ATTR_SIZE_VER4 {
-            reader.read_u64::<T>()?
-        } else {
-            0
-        };
-
-        let (aux_watermark, sample_max_stack) = if size >= sys::PERF_ATTR_SIZE_VER5 {
-            let aux_watermark = reader.read_u32::<T>()?;
-            let sample_max_stack = reader.read_u16::<T>()?;
-            let __reserved_2 = reader.read_u16::<T>()?;
-            (aux_watermark, sample_max_stack)
-        } else {
-            (0, 0)
-        };
-
-        let aux_sample_size = if size >= sys::PERF_ATTR_SIZE_VER6 {
-            let aux_sample_size = reader.read_u32::<T>()?;
-            let __reserved_3 = reader.read_u32::<T>()?;
-            aux_sample_size
-        } else {
-            0
-        };
-
-        let sig_data = if size >= sys::PERF_ATTR_SIZE_VER7 {
-            reader.read_u64::<T>()?
-        } else {
-            0
-        };
-
-        // Consume any remaining bytes.
-        if size > sys::PERF_ATTR_SIZE_VER7 {
-            let remaining = size - sys::PERF_ATTR_SIZE_VER7;
-            io::copy(&mut reader.by_ref().take(remaining.into()), &mut io::sink())?;
-        }
-
-        let flags = AttrFlags::from_bits_truncate(flags);
-        let type_ = PerfEventType::parse(
-            type_,
-            bp_type,
-            config,
-            bp_addr_or_kprobe_func_or_uprobe_func_or_config1,
-            bp_len_or_kprobe_addr_or_probe_offset_or_config2,
-        )
-        .ok_or(io::ErrorKind::InvalidInput)?;
-
-        // If AttrFlags::FREQ is set in `flags`, this is the sample frequency,
-        // otherwise it is the sample period.
+    /// Read a `PerfEventAttr` struct from `reader`.
+    ///
+    /// If given, `size` is the actual byte length of the struct. This
+    /// overrides whatever value is given in the `perf_event_attr`
+    /// struct's `size` field.
+    ///
+    /// The Linux kernel establishes conventions for handling structs
+    /// that need to be able to acquire new fields over time:
+    ///
+    /// - Each struct is accompanied by an indication of how large
+    ///   userspace thinks it is. (This is either our `size` argument
+    ///   or the struct's own `size` field.)
+    ///
+    /// - Once placed, fields are never moved. New fields are only added at the end.
+    ///   Deleted fields become placeholders.
+    ///
+    /// - Filling a field with zero bits always requests the same
+    ///   behavior as before the field was defined.
+    ///
+    /// Following these rules, it is always meaning-preserving to pad
+    /// short data at the end with zeros, or to skip long data as long
+    /// as it only contains zeros. If the excess bytes contain any
+    /// non-zero bytes, we report an error.
+    pub fn parse<R: Read>(mut reader: R, size: Option<u32>) -> Result<Self, std::io::Error> {
+        // This is a little awkward, as there are four lengths in play here:
         //
-        // ```c
-        // union {
-        //     /// Period of sampling
-        //     __u64 sample_period;
-        //     /// Frequency of sampling
-        //     __u64 sample_freq;
-        // };
-        // ```
-        let sampling_policy = if flags.contains(AttrFlags::FREQ) {
-            SamplingPolicy::Frequency(sampling_period_or_frequency)
-        } else if let Some(period) = NonZeroU64::new(sampling_period_or_frequency) {
-            SamplingPolicy::Period(period)
-        } else {
-            SamplingPolicy::NoSampling
-        };
+        // - The length of our `sys::perf_event_attr` type.
+        //
+        // - The length stored in the `perf_event_attr` struct's `size` field.
+        //
+        // - The length passed as the `size` argument.
+        //
+        // - The length of the data available in `reader`.
 
-        let wakeup_policy = if flags.contains(AttrFlags::WATERMARK) {
-            WakeupPolicy::Watermark(wakeup_events_or_watermark)
-        } else {
-            WakeupPolicy::EventCount(wakeup_events_or_watermark)
-        };
+        // Start with a `perf_event_attr` filled with zeros. As described above,
+        // if there is not enough data to initialize this fully, the remaining
+        // zeroed tail of the struct will not affect the meaning.
+        //
+        // Safety: all bit patterns are valid representations of
+        // `perf_event_attr` values.
+        let mut raw: sys::perf_event_attr = unsafe { mem::zeroed() };
+        const ATTR_SIZE: usize = mem::size_of::<sys::perf_event_attr>();
 
-        let clock = if flags.contains(AttrFlags::USE_CLOCKID) {
-            let clockid = ClockId::from_u32(clockid).ok_or(io::ErrorKind::InvalidInput)?;
+        // Read only enough to initialize `raw.size`.
+        reader
+            .read_exact(unsafe { slice::from_raw_parts_mut(&mut raw as *mut _ as *mut u8, 8) })?;
+
+        // Decide how many bytes we will read, and how many bytes we will use.
+        //
+        // If `size` is `Some(n)`, read `n` bytes. If it's `None`, then read
+        // `raw.size` bytes.
+        //
+        // Use the lesser of `size` (if given), `raw.size` and the size of our
+        // `perf_event_attr` struct.
+        //
+        // Special case: if `raw.size` is zero, then we should assume
+        // `PERF_ATTR_SIZE_VER0`a per Linux `kernel/events/core.c`, which says:
+        //
+        //     /* ABI compatibility quirk: */
+        //     if (!size)
+        //         size = PERF_ATTR_SIZE_VER0;
+        //
+        // We're unlikely to encounter this, but it's easy enough to handle.
+        if raw.size == 0 {
+            raw.size = sys::PERF_ATTR_SIZE_VER0;
+        }
+        let to_read = size.unwrap_or(raw.size) as usize;
+        let to_use = cmp::min(to_read, cmp::min(raw.size as usize, ATTR_SIZE));
+
+        let mut rest = unsafe {
+            let whole = slice::from_raw_parts_mut(&mut raw as *mut _ as *mut u8, ATTR_SIZE);
+            &mut whole[8..to_use]
+        };
+        // Unfortunately, we can't use read_exact here, because we want to
+        // handle short reads, so just write it out. Short reads may occur when
+        // reading data generated using an older version of the kernel headers
+        // than we were compiled against ourselves.
+        while !rest.is_empty() {
+            let read = match reader.read(rest) {
+                Ok(0) => break,                                        // end of input
+                Ok(bytes) => bytes,                                    // progress
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => 0, // just retry
+                Err(other) => return Err(other),                       // actual error
+            };
+            rest = &mut rest[read..];
+        }
+
+        // If there is additional data beyond the end of our `perf_event_attr`
+        // struct, check that it is all zeros. This may occur when reading data
+        // generated using a newer version of the kernel headers than we were
+        // compiled against ourselves.
+        let read_thus_far = to_use - rest.len();
+        if to_read > read_thus_far {
+            let mut excess = vec![];
+            reader
+                .by_ref()
+                .take((to_read - read_thus_far) as u64)
+                .read_to_end(&mut excess)?;
+            if !excess.iter().all(|&b| b == 0) {
+                let msg = "perf data uses features too new for this program to handle";
+                return Err(io::Error::new(io::ErrorKind::Other, msg));
+            }
+        }
+
+        let r#type = PerfEventType::parse(
+            raw.type_,
+            raw.bp_type,
+            raw.config,
+            // Safety: all bit patterns are valid u64 values.
+            unsafe { raw.__bindgen_anon_3.config1 },
+            unsafe { raw.__bindgen_anon_4.config2 },
+        )
+            .ok_or(io::ErrorKind::InvalidInput)?;
+
+        let perf_clock = if raw.use_clockid() != 0 {
+            let clockid = ClockId::from_i32(raw.clockid).ok_or(io::ErrorKind::InvalidInput)?;
             PerfClock::ClockId(clockid)
         } else {
             PerfClock::Default
         };
 
-        Ok(Self {
-            type_,
-            sampling_policy,
-            sample_format: SampleFormat::from_bits_truncate(sample_type),
-            read_format: ReadFormat::from_bits_truncate(read_format),
-            flags,
-            wakeup_policy,
-            branch_sample_format: BranchSampleFormat::from_bits_truncate(branch_sample_type),
-            sample_regs_user,
-            sample_stack_user,
-            clock,
-            sample_regs_intr,
-            aux_watermark,
-            sample_max_stack,
-            aux_sample_size,
-            sig_data,
-        })
+        Ok(Self { r#type, perf_clock, raw })
+    }
+}
+
+impl PerfEventAttr {
+    pub fn r#type(&self) -> PerfEventType {
+        self.r#type
+    }
+
+    pub fn sample_format(&self) -> SampleFormat {
+        SampleFormat::from_bits_truncate(self.raw.sample_type)
+    }
+
+    pub fn sampling_policy(&self) -> SamplingPolicy {
+        if self.freq() {
+            SamplingPolicy::Frequency(unsafe { self.raw.__bindgen_anon_1.sample_freq })
+        } else if let Some(period) =
+            NonZeroU64::new(unsafe { self.raw.__bindgen_anon_1.sample_period })
+        {
+            SamplingPolicy::Period(period)
+        } else {
+            SamplingPolicy::NoSampling
+        }
+    }
+
+    pub fn wakeup_policy(&self) -> WakeupPolicy {
+        if self.watermark() {
+            WakeupPolicy::Watermark(unsafe { self.raw.__bindgen_anon_2.wakeup_watermark })
+        } else {
+            WakeupPolicy::EventCount(unsafe { self.raw.__bindgen_anon_2.wakeup_events })
+        }
+    }
+
+    pub fn branch_sample_format(&self) -> BranchSampleFormat {
+        BranchSampleFormat::from_bits_truncate(self.raw.branch_sample_type)
+    }
+
+    /// Specifies the structure values returned by read() on a perf event fd,
+    /// see [`ReadFormat`].
+    pub fn read_format(&self) -> ReadFormat {
+        ReadFormat::from_bits_truncate(self.raw.read_format)
+    }
+
+    pub fn perf_clock(&self) -> PerfClock {
+        self.perf_clock
+    }
+
+    pub fn disabled(&self) -> bool {
+        self.raw.disabled() != 0
+    }
+
+    pub fn inherit(&self) -> bool {
+        self.raw.inherit() != 0
+    }
+
+    pub fn pinned(&self) -> bool {
+        self.raw.pinned() != 0
+    }
+
+    pub fn exclusive(&self) -> bool {
+        self.raw.exclusive() != 0
+    }
+
+    pub fn exclude_user(&self) -> bool {
+        self.raw.exclude_user() != 0
+    }
+
+    pub fn exclude_kernel(&self) -> bool {
+        self.raw.exclude_kernel() != 0
+    }
+
+    pub fn exclude_hv(&self) -> bool {
+        self.raw.exclude_hv() != 0
+    }
+
+    pub fn exclude_idle(&self) -> bool {
+        self.raw.exclude_idle() != 0
+    }
+
+    pub fn mmap(&self) -> bool {
+        self.raw.mmap() != 0
+    }
+
+    pub fn comm(&self) -> bool {
+        self.raw.comm() != 0
+    }
+
+    pub fn freq(&self) -> bool {
+        self.raw.freq() != 0
+    }
+
+    pub fn inherit_stat(&self) -> bool {
+        self.raw.inherit_stat() != 0
+    }
+
+    pub fn enable_on_exec(&self) -> bool {
+        self.raw.enable_on_exec() != 0
+    }
+
+    pub fn task(&self) -> bool {
+        self.raw.task() != 0
+    }
+
+    pub fn watermark(&self) -> bool {
+        self.raw.watermark() != 0
+    }
+
+    pub fn precise_ip(&self) -> IpSkidConstraint {
+        IpSkidConstraint::from_bits(self.raw.precise_ip())
+    }
+
+    pub fn mmap_data(&self) -> bool {
+        self.raw.mmap_data() != 0
+    }
+
+    pub fn sample_id_all(&self) -> bool {
+        self.raw.sample_id_all() != 0
+    }
+
+    pub fn exclude_host(&self) -> bool {
+        self.raw.exclude_host() != 0
+    }
+
+    pub fn exclude_guest(&self) -> bool {
+        self.raw.exclude_guest() != 0
+    }
+
+    pub fn exclude_callchain_kernel(&self) -> bool {
+        self.raw.exclude_callchain_kernel() != 0
+    }
+
+    pub fn exclude_callchain_user(&self) -> bool {
+        self.raw.exclude_callchain_user() != 0
+    }
+
+    pub fn mmap2(&self) -> bool {
+        self.raw.mmap2() != 0
+    }
+
+    pub fn comm_exec(&self) -> bool {
+        self.raw.comm_exec() != 0
+    }
+
+    pub fn use_clockid(&self) -> bool {
+        self.raw.use_clockid() != 0
+    }
+
+    pub fn context_switch(&self) -> bool {
+        self.raw.context_switch() != 0
+    }
+
+    pub fn write_backward(&self) -> bool {
+        self.raw.write_backward() != 0
+    }
+
+    pub fn namespaces(&self) -> bool {
+        self.raw.namespaces() != 0
+    }
+
+    pub fn ksymbol(&self) -> bool {
+        self.raw.ksymbol() != 0
+    }
+
+    pub fn bpf_event(&self) -> bool {
+        self.raw.bpf_event() != 0
+    }
+
+    pub fn aux_output(&self) -> bool {
+        self.raw.aux_output() != 0
+    }
+
+    pub fn cgroup(&self) -> bool {
+        self.raw.cgroup() != 0
+    }
+
+    pub fn text_poke(&self) -> bool {
+        self.raw.text_poke() != 0
+    }
+
+    pub fn sample_regs_user(&self) -> u64 {
+        self.raw.sample_regs_user
     }
 }
 

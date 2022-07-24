@@ -69,87 +69,6 @@ bitflags! {
         const HW_INDEX = sys::PERF_SAMPLE_BRANCH_HW_INDEX as u64;
     }
 
-    pub struct AttrFlags: u64 {
-        /// off by default
-        const DISABLED = 0;
-        /// children inherit it
-        const INHERIT = 0;
-        /// must always be on PMU
-        const PINNED = 0;
-        /// only group on PMU
-        const EXCLUSIVE = 0;
-        /// don't count user
-        const EXCLUDE_USER = 0;
-        /// don't count kernel
-        const EXCLUDE_KERNEL = 0;
-        /// don't count hypervisor
-        const EXCLUDE_HV = 0;
-        /// don't count when idle
-        const EXCLUDE_IDLE = 0;
-        /// include mmap data
-        const MMAP = 0;
-        /// include comm data
-        const COMM = 0;
-        /// use freq, not period
-        const FREQ = 0;
-        /// per task counts
-        const INHERIT_STAT = 0;
-        /// next exec enables
-        const ENABLE_ON_EXEC = 0;
-        /// trace fork/exit
-        const TASK = 0;
-        /// wakeup_watermark
-        const WATERMARK = 0;
-        /// one of the two PRECISE_IP bitmask bits
-        const PRECISE_IP_BIT_15 = 1 << 15;
-        /// one of the two PRECISE_IP bitmask bits
-        const PRECISE_IP_BIT_16 = 1 << 16;
-        /// the full PRECISE_IP bitmask
-        const PRECISE_IP_BITMASK = 0;
-        /// non-exec mmap data
-        const MMAP_DATA = 0;
-        /// sample_type all events
-        const SAMPLE_ID_ALL = 0;
-        /// don't count in host
-        const EXCLUDE_HOST = 0;
-        /// don't count in guest
-        const EXCLUDE_GUEST = 0;
-        /// exclude kernel callchains
-        const EXCLUDE_CALLCHAIN_KERNEL = 0;
-        /// exclude user callchains
-        const EXCLUDE_CALLCHAIN_USER = 0;
-        /// include mmap with inode data
-        const MMAP2 = 0;
-        /// flag comm events that are due to exec
-        const COMM_EXEC = 0;
-        /// use @clockid for time fields
-        const USE_CLOCKID = 0;
-        /// context switch data
-        const CONTEXT_SWITCH = 0;
-        /// Write ring buffer from end to beginning
-        const WRITE_BACKWARD = 0;
-        /// include namespaces data
-        const NAMESPACES = 0;
-        /// include ksymbol events
-        const KSYMBOL = 0;
-        /// include bpf events
-        const BPF_EVENT = 0;
-        /// generate AUX records instead of events
-        const AUX_OUTPUT = 0;
-        /// include cgroup events
-        const CGROUP = 0;
-        /// include text poke events
-        const TEXT_POKE = 0;
-        /// use build id in mmap2 events
-        const BUILD_ID = 0;
-        /// children only inherit if cloned with CLONE_THREAD
-        const INHERIT_THREAD = 0;
-        /// event is removed from task on exec
-        const REMOVE_ON_EXEC = 0;
-        /// send synchronous SIGTRAP on event
-        const SIGTRAP = 0;
-    }
-
     pub struct HwBreakpointType: u32 {
         /// No breakpoint. (`HW_BREAKPOINT_EMPTY`)
         const EMPTY = 0;
@@ -210,10 +129,10 @@ pub enum IpSkidConstraint {
     ZeroSkidOrRandomization,
 }
 
-impl AttrFlags {
+impl IpSkidConstraint {
     /// Extract the IpSkidConstraint from the bits.
-    pub fn ip_skid_constraint(&self) -> IpSkidConstraint {
-        match (self.bits & Self::PRECISE_IP_BITMASK.bits) >> 15 {
+    pub fn from_bits(bits: u64) -> IpSkidConstraint {
+        match bits {
             0 => IpSkidConstraint::ArbitrarySkid,
             1 => IpSkidConstraint::ConstantSkid,
             2 => IpSkidConstraint::ZeroSkid,
@@ -239,7 +158,7 @@ pub enum ClockId {
 }
 
 impl ClockId {
-    pub fn from_u32(clockid: u32) -> Option<Self> {
+    pub fn from_i32(clockid: i32) -> Option<Self> {
         Some(match clockid {
             0 => Self::Realtime,
             1 => Self::Monotonic,

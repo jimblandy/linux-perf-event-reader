@@ -1,4 +1,4 @@
-use crate::{AttrFlags, BranchSampleFormat, Endianness, PerfEventAttr, ReadFormat, SampleFormat};
+use crate::{BranchSampleFormat, Endianness, PerfEventAttr, ReadFormat, SampleFormat};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RecordParseInfo {
@@ -22,9 +22,9 @@ pub struct RecordIdParseInfo {
 
 impl RecordParseInfo {
     pub fn new(attr: &PerfEventAttr, endian: Endianness) -> Self {
-        let sample_format = attr.sample_format;
-        let branch_sample_format = attr.branch_sample_format;
-        let read_format = attr.read_format;
+        let sample_format = attr.sample_format();
+        let branch_sample_format = attr.branch_sample_format();
+        let read_format = attr.read_format();
 
         // struct sample_id {
         //     { u32 pid, tid; }   /* if PERF_SAMPLE_TID set */
@@ -34,7 +34,7 @@ impl RecordParseInfo {
         //     { u32 cpu, res; }   /* if PERF_SAMPLE_CPU set */
         //     { u64 id;       }   /* if PERF_SAMPLE_IDENTIFIER set */
         // };
-        let common_data_offset_from_end = if attr.flags.contains(AttrFlags::SAMPLE_ID_ALL) {
+        let common_data_offset_from_end = if attr.sample_id_all() {
             Some(
                 sample_format
                     .intersection(
@@ -52,27 +52,26 @@ impl RecordParseInfo {
         } else {
             None
         };
-        let sample_regs_user = attr.sample_regs_user;
+        let sample_regs_user = attr.sample_regs_user();
         let regs_count = sample_regs_user.count_ones() as u8;
-        let nonsample_record_time_offset_from_end = if attr.flags.contains(AttrFlags::SAMPLE_ID_ALL)
-            && sample_format.contains(SampleFormat::TIME)
-        {
-            Some(
-                sample_format
-                    .intersection(
-                        SampleFormat::TIME
-                            | SampleFormat::ID
-                            | SampleFormat::STREAM_ID
-                            | SampleFormat::CPU
-                            | SampleFormat::IDENTIFIER,
-                    )
-                    .bits()
-                    .count_ones() as u8
-                    * 8,
-            )
-        } else {
-            None
-        };
+        let nonsample_record_time_offset_from_end =
+            if attr.sample_id_all() && sample_format.contains(SampleFormat::TIME) {
+                Some(
+                    sample_format
+                        .intersection(
+                            SampleFormat::TIME
+                                | SampleFormat::ID
+                                | SampleFormat::STREAM_ID
+                                | SampleFormat::CPU
+                                | SampleFormat::IDENTIFIER,
+                        )
+                        .bits()
+                        .count_ones() as u8
+                        * 8,
+                )
+            } else {
+                None
+            };
 
         // { u64 id;           } && PERF_SAMPLE_IDENTIFIER
         // { u64 ip;           } && PERF_SAMPLE_IP
@@ -109,8 +108,8 @@ impl RecordParseInfo {
 
 impl RecordIdParseInfo {
     pub fn new(attr: &PerfEventAttr) -> Self {
-        let sample_format = attr.sample_format;
-        let nonsample_record_id_offset_from_end = if attr.flags.contains(AttrFlags::SAMPLE_ID_ALL)
+        let sample_format = attr.sample_format();
+        let nonsample_record_id_offset_from_end = if attr.sample_id_all()
             && sample_format.intersects(SampleFormat::ID | SampleFormat::IDENTIFIER)
         {
             if sample_format.contains(SampleFormat::IDENTIFIER) {
